@@ -1,0 +1,60 @@
+#n Wyam.Highlight
+#n Wyam.Markdown
+#n Wyam.Minification
+#n Wyam.Razor
+#n Wyam.Yaml
+#n Wyam.TextGeneration
+
+#recipe Blog
+
+// Customize your settings and add new ones here
+Settings[Keys.Host] = "host.com";
+Settings[BlogKeys.Title] = "NGraham PAG";
+Settings[BlogKeys.Description] = "My PAG project";
+
+// Add any pipeline customizations here
+
+#n Ociaw.Wyam.PlainBlog
+
+#theme Ociaw.Wyam.PlainBlog
+
+
+Pipelines["RenderBlogPosts"].InsertBefore
+(
+    nameof(Wyam.Web.Pipelines.RenderBlogPosts.WriteFiles),
+    new Highlight(),
+    new MinifyHtml()
+);
+
+Pipelines["RenderPages"].InsertBefore
+(
+    nameof(Wyam.Web.Pipelines.RenderPages.WriteFiles),
+    new Highlight(),
+    new MinifyHtml()
+);
+
+Pipelines["Index"].InsertBefore
+(
+    nameof(Wyam.Web.Pipelines.Archive.WriteFiles),
+    new Highlight(),
+    new MinifyHtml()
+);
+
+Pipelines["Tags"].InsertBefore
+(
+    nameof(Wyam.Web.Pipelines.Archive.WriteFiles),
+    "MinifyHtmlTags",
+    new MinifyHtml()
+);
+
+Pipelines["TagIndex"].GetFirst<If>()[0].InsertBeforeFirst<WriteFiles>
+(
+    "MinifyTagIndex",
+    new MinifyHtml()
+);
+
+Pipelines["BlogArchive"].GetFirst<If>()[0].InsertBeforeFirst<WriteFiles>
+(
+    "MinifyArchive",
+    new MinifyHtml()
+);
