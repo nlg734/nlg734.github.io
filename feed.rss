@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0">
+	<channel>
+		<title>NGraham PAG</title>
+		<link>http://host.com/</link>
+		<description>My PAG project</description>
+		<copyright>2020</copyright>
+		<pubDate>Wed, 02 Dec 2020 02:30:45 GMT</pubDate>
+		<lastBuildDate>Wed, 02 Dec 2020 02:30:45 GMT</lastBuildDate>
+		<item>
+			<title>First Post</title>
+			<link>http://host.com/posts/first-post</link>
+			<description>&lt;p&gt;This is my first post!&lt;/p&gt;</description>
+			<guid>http://host.com/posts/first-post</guid>
+			<pubDate>Fri, 01 Jan 2016 00:00:00 GMT</pubDate>
+			<content:encoded>&lt;p&gt;This is my first post!&lt;/p&gt;
+</content:encoded>
+		</item>
+	</channel>
+</rss>
