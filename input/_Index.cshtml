@@ -1,0 +1,22 @@
+<section id="site-description">
+@if (Context.String(BlogKeys.Description) != null)
+{
+    <h1>@Context.String(BlogKeys.Description)</h1>
+}
+@if (Context.String(BlogKeys.Intro) != null)
+{
+    <p id="site-intro">
+        @Context.String(BlogKeys.Intro)
+    </p>
+}
+</section>
+<article>
+
+<h3>Background</h3>
+<p>here's some background on what the heck I tried</p>
+
+<h3>Overview</h3>
+<p>Here's some talk about the code and data analysis</p>
+
+</article>
+
