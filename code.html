@@ -1,3 +1,192 @@
-<!DOCTYPE html><html lang=en><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=Edge"><title>NGraham PAG: The Code</title><meta name=description content="My PAG project"><meta name=viewport content="width=device-width, initial-scale=1.0"><link type=application/rss+xml rel=alternate title="NGraham PAG" href=/feed.rss><link type=application/atom+xml rel=alternate title="NGraham PAG" href=/feed.atom><link href=/assets/css/plain.css rel=stylesheet><link href=/assets/css/override.css rel=stylesheet><meta name=application-name content="NGraham PAG"><meta name=msapplication-tooltip content="NGraham PAG"><meta name=msapplication-starturl content="/"><meta property=og:title content="NGraham PAG: The Code"><meta property=og:type content=website><meta property=og:url content=http://pag.nlgraham.com/code><body><header id=primary-header><span id=primary-heading><a href="/">NGraham PAG</a></span> <nav id=primary-navbar><div class=button-link><a href=/results>Results</a></div><div class=button-link><a href=/code>The Code</a></div></nav></header><main><article><pre><code class="language-python hljs"><span class=hljs-comment>#some code</span>
-print(<span class=hljs-string>"Hello world!"</span>)
+<!DOCTYPE html><html lang=en><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=Edge"><title>NGraham PAG: Code</title><meta name=description content="My PAG project"><meta name=viewport content="width=device-width, initial-scale=1.0"><link type=application/rss+xml rel=alternate title="NGraham PAG" href=/feed.rss><link type=application/atom+xml rel=alternate title="NGraham PAG" href=/feed.atom><link href=/assets/css/plain.css rel=stylesheet><link href=/assets/css/override.css rel=stylesheet><meta name=application-name content="NGraham PAG"><meta name=msapplication-tooltip content="NGraham PAG"><meta name=msapplication-starturl content="/"><meta property=og:title content="NGraham PAG: Code"><meta property=og:type content=website><meta property=og:url content=http://pag.nlgraham.com/code><body><header id=primary-header><span id=primary-heading><a href="/">NGraham PAG</a></span> <nav id=primary-navbar><div class=button-link><a href="/">Overview</a></div><div class=button-link><a href=/code>Code</a></div><div class=button-link><a href=/results>Results</a></div></nav></header><main><article><p>This is the code I used to create one of my images in the results page. Other images there were created with variations on this code (namely, the plotting sections and machine specific constants)<pre><code class="language-python hljs"><span class=hljs-comment># erebus.py</span>
+<span class=hljs-comment># Author: Natasha Graham</span>
+<span class=hljs-comment># Low-Pass Filter Routine</span>
+<span class=hljs-comment># Adapted from Lyons et al 2012</span>
+<span class=hljs-comment># online supplement 2</span>
+<span class=hljs-comment># For Python 3</span>
+<span class=hljs-comment># Tilt extraction methods</span>
+<span class=hljs-comment># adapted from Lyons et al 2012</span>
+
+
+<span class=hljs-keyword>import</span> numpy <span class=hljs-keyword>as</span> np
+<span class=hljs-keyword>from</span> scipy.integrate <span class=hljs-keyword>import</span> cumtrapz
+<span class=hljs-keyword>from</span> scipy.signal <span class=hljs-keyword>import</span> butter, buttord, filtfilt, lfilter, decimate
+<span class=hljs-keyword>from</span> scipy <span class=hljs-keyword>import</span> constants
+<span class=hljs-keyword>import</span> matplotlib.pyplot <span class=hljs-keyword>as</span> plt
+<span class=hljs-keyword>from</span> obspy <span class=hljs-keyword>import</span> read
+<span class=hljs-keyword>import</span> sys
+<span class=hljs-keyword>import</span> os
+
+
+<span class=hljs-comment># Taken directly from Lyons 2012</span>
+<span class=hljs-comment># Adapted from the original MATLAB to Python 3</span>
+<span class=hljs-comment># Performs lowpass filter on data</span>
+<span class=hljs-function><span class=hljs-keyword>def</span> <span class=hljs-title>lpfl</span><span class=hljs-params>(x, fs, fl, fh, np)</span>:</span>
+	<span class=hljs-comment># Definition of variables</span>
+	<span class=hljs-comment># x : Data vector</span>
+	<span class=hljs-comment># fs : sampling frequency (Hz)</span>
+	<span class=hljs-comment># fl : cut frequency</span>
+	<span class=hljs-comment># fh : stop frequency</span>
+	<span class=hljs-comment># rp : pass (3dB)</span>
+	<span class=hljs-comment># rs : stop (50dB)</span>
+	<span class=hljs-comment># np : order of the Butter filter</span>
+	
+	wp = <span class=hljs-number>2</span> * fl / fs <span class=hljs-comment># pass band corner</span>
+	ws = <span class=hljs-number>2</span> * fh / fs <span class=hljs-comment># stop band corner</span>
+	rp = <span class=hljs-number>3</span>
+	rs = <span class=hljs-number>50</span>
+	n, wn = buttord(wp, ws, rp, rs)
+	b, a = butter(n, wn)
+	<span class=hljs-comment># single-pass, causal filter</span>
+	<span class=hljs-keyword>if</span> np == <span class=hljs-number>1</span>:
+		<span class=hljs-keyword>return</span> lfilter(b, a, x)
+	<span class=hljs-comment># double-pass, non-causal filter</span>
+	<span class=hljs-keyword>else</span>:
+		<span class=hljs-keyword>return</span> filtfilt(b, a, x)
+
+
+<span class=hljs-comment># params:</span>
+<span class=hljs-comment>#   data: array</span>
+<span class=hljs-comment># returns: array</span>
+<span class=hljs-comment># Subtracts the mean from the given array and returns it</span>
+<span class=hljs-function><span class=hljs-keyword>def</span> <span class=hljs-title>remove_mean</span><span class=hljs-params>(data)</span>:</span>
+    <span class=hljs-keyword>return</span> data - data.mean()
+
+<span class=hljs-comment># params:</span>
+<span class=hljs-comment>#   data: array of data</span>
+<span class=hljs-comment>#   timescale: array, elements are units of time</span>
+<span class=hljs-comment># returns: array</span>
+<span class=hljs-comment># Returns an array that is a cumulative integration of data over the time given</span>
+<span class=hljs-function><span class=hljs-keyword>def</span> <span class=hljs-title>integrate_data</span><span class=hljs-params>(data, timescale)</span>:</span>
+	<span class=hljs-keyword>return</span> cumtrapz(x=timescale, y=data)	
+
+<span class=hljs-comment># params:</span>
+<span class=hljs-comment>#    f: directory name</span>
+<span class=hljs-comment># returns: array, integer</span>
+<span class=hljs-comment># goes through filtering and tilt extraction process for the data</span>
+<span class=hljs-comment># Takes a folder name and goes through the individual data files</span>
+<span class=hljs-comment># to then stack the resulting arrays for an average tilt over all the data</span>
+<span class=hljs-function><span class=hljs-keyword>def</span> <span class=hljs-title>data_filter</span><span class=hljs-params>(f)</span>:</span>
+    <span class=hljs-comment># S : seismometer sensitivity</span>
+    <span class=hljs-comment># w0 : natural angular frequency</span>
+    <span class=hljs-comment># g : gravitational acceleration</span>
+    <span class=hljs-comment># for cmg-40t, should be adjusted for specific machine</span>
+    S = <span class=hljs-number>800</span>
+    f0 = <span class=hljs-number>0.033</span>  <span class=hljs-comment># natural frequency of machine</span>
+    fs = <span class=hljs-number>4</span>      <span class=hljs-comment># sampling frequency</span>
+    fl = <span class=hljs-number>1</span>/<span class=hljs-number>30</span>   <span class=hljs-comment># cut frequency</span>
+    fh = <span class=hljs-number>1</span>/<span class=hljs-number>10</span>   <span class=hljs-comment># stop frequency</span>
+    
+    <span class=hljs-comment># intialize a final array that will be returned</span>
+    final = np.zeros(<span class=hljs-number>110</span>*<span class=hljs-number>60</span>*<span class=hljs-number>4</span>)
+    
+    <span class=hljs-comment># Get list of files in the directory given</span>
+    files = os.listdir(os.fsencode(f))
+    w0 = f0 <span class=hljs-comment># * 2 * np.pi   # For some reason, it *appears* to work better</span>
+                            <span class=hljs-comment># as just f0, and I'm unsure of exactly why - probably </span>
+                            <span class=hljs-comment># a filtering issue</span>
+                            
+    <span class=hljs-comment># Not all files work with what I have at the moment</span>
+    <span class=hljs-comment># need to take into account the amount of files that don't "work"</span>
+    no = <span class=hljs-number>0</span>
+    
+    <span class=hljs-comment># Iterate through each file in the directory</span>
+    <span class=hljs-keyword>for</span> fi <span class=hljs-keyword>in</span> files:
+        d = read(f + <span class=hljs-string>"/"</span> + os.fsdecode(fi))
+        
+        <span class=hljs-comment># Remove the mean, create an array for the seconds</span>
+        data_1 = remove_mean(d[<span class=hljs-number>0</span>].data)
+        time = np.array([((<span class=hljs-number>1</span>/<span class=hljs-number>40</span>) * x) / <span class=hljs-number>60</span> <span class=hljs-keyword>for</span> x <span class=hljs-keyword>in</span> range((<span class=hljs-number>110</span>*<span class=hljs-number>60</span>*<span class=hljs-number>40</span> + <span class=hljs-number>1</span>))])
+        
+        <span class=hljs-comment># Tries to integrate the data</span>
+        <span class=hljs-comment># In the event that it throws an exception (usually differently sized arrays)</span>
+        <span class=hljs-comment># it adds one to the count of "failed" files, and moves to the next file</span>
+        <span class=hljs-keyword>try</span>:
+            fullsamplerate_data = integrate_data(data_1, time)
+        <span class=hljs-keyword>except</span> Exception:
+            no += <span class=hljs-number>1</span>
+            <span class=hljs-keyword>continue</span>
+
+        <span class=hljs-comment># Downsample the integrated data, with a FIR filter</span>
+        <span class=hljs-comment># Downsample the time vector</span>
+        downsampled_data = decimate(fullsamplerate_data, <span class=hljs-number>10</span>, ftype=<span class=hljs-string>'fir'</span>)
+        downsample_time = decimate(time, <span class=hljs-number>10</span>)
+
+        <span class=hljs-comment># Lowpass filter the downsampled data</span>
+        lowpass_filtered_data = lpfl(downsampled_data, fs, fl, fh, <span class=hljs-number>1</span>)
+        
+        <span class=hljs-comment># Multiplies the filtered data by the constants and</span>
+        <span class=hljs-comment># tries to add the latest tilt signal to the final array</span>
+        <span class=hljs-comment># Most exceptions should have been caught above already, but just in case</span>
+        <span class=hljs-comment># we have another try-except block here with similar results</span>
+        <span class=hljs-keyword>try</span>:
+            final = np.add(final,(<span class=hljs-number>-1</span> * S * np.power(w0,<span class=hljs-number>2</span>) / constants.g) * lowpass_filtered_data)
+        <span class=hljs-keyword>except</span> Exception:
+            no +=<span class=hljs-number>1</span>
+            <span class=hljs-keyword>pass</span>
+            
+    <span class=hljs-comment># Return the stacked tilt, number of events that went into the stack</span>
+    <span class=hljs-keyword>return</span> final / (len(files) - no), len(files) - no
+
+
+<span class=hljs-comment># params:</span>
+<span class=hljs-comment>#    argv: array of command line arguments</span>
+<span class=hljs-comment># returns: void</span>
+<span class=hljs-function><span class=hljs-keyword>def</span> <span class=hljs-title>main</span><span class=hljs-params>(argv)</span>:</span>
+    <span class=hljs-comment># Get list of directories in the directory given at command line</span>
+    file_list = os.listdir(os.fsencode(argv[<span class=hljs-number>0</span>]))
+    num_of_files = len(file_list)
+    
+    <span class=hljs-comment># Create a time vector for plotting</span>
+    time = np.array([((<span class=hljs-number>10</span>/<span class=hljs-number>40</span>) * x) / <span class=hljs-number>60</span> <span class=hljs-keyword>for</span> x <span class=hljs-keyword>in</span> range((<span class=hljs-number>110</span>*<span class=hljs-number>60</span>*<span class=hljs-number>4</span>))])
+    
+    results_dict = {}  <span class=hljs-comment># a dictionary for the resulting stacks</span>
+    
+    <span class=hljs-comment># Iterate through the diretories listed above</span>
+    <span class=hljs-keyword>for</span> f <span class=hljs-keyword>in</span> file_list:
+        <span class=hljs-comment># For each directory in this directory, run them through the data_filter</span>
+        <span class=hljs-keyword>for</span> l <span class=hljs-keyword>in</span> os.listdir(os.fsencode(argv[<span class=hljs-number>0</span>]) + os.fsencode(<span class=hljs-string>"/"</span>) + f):
+            total_data, events = data_filter(argv[<span class=hljs-number>0</span>] + <span class=hljs-string>"/"</span> + os.fsdecode(f) + <span class=hljs-string>"/"</span> + os.fsdecode(l))
+            
+            <span class=hljs-comment># Get station and channel names from the directory names</span>
+            sta = os.fsdecode(f)
+            cha = os.fsdecode(l)
+            
+            <span class=hljs-comment># add the resulting stack to the dictionary</span>
+            <span class=hljs-keyword>if</span> sta <span class=hljs-keyword>in</span> results_dict.keys():
+                results_dict[sta][cha] = [total_data, events]
+                <span class=hljs-keyword>pass</span>
+            <span class=hljs-keyword>else</span>:
+                results_dict[sta] = {cha: [total_data, events]}
+
+    <span class=hljs-comment># Number of stations - maybe see about automating figure creation</span>
+    num = len(results_dict.keys())
+    
+    <span class=hljs-comment># Plot the tilt signals and save as an image</span>
+    ax1 = plt.subplot(num, <span class=hljs-number>1</span>, <span class=hljs-number>1</span>)
+    plt.xlim(<span class=hljs-number>0</span>,<span class=hljs-number>110</span>)
+    plt.xticks(np.arange(<span class=hljs-number>0</span>,<span class=hljs-number>111</span>,<span class=hljs-number>10</span>))
+    plt.ylabel(<span class=hljs-string>"Tilt (nrad)"</span>)
+    ax1.annotate(<span class=hljs-string>"NKB Dec 2013"</span> + <span class=hljs-string>", "</span> + str(results_dict[<span class=hljs-string>"NKB-dec-2013"</span>][<span class=hljs-string>"BH1"</span>][<span class=hljs-number>1</span>]) + <span class=hljs-string>" event(s)"</span>, xy=(<span class=hljs-number>0</span>,<span class=hljs-number>1</span>), xycoords=<span class=hljs-string>"axes fraction"</span>)
+    plt.plot(time, results_dict[<span class=hljs-string>"NKB-dec-2013"</span>][<span class=hljs-string>"BH1"</span>][<span class=hljs-number>0</span>], <span class=hljs-string>"--k"</span>, label=<span class=hljs-string>"East"</span>)
+    plt.plot(time, results_dict[<span class=hljs-string>"NKB-dec-2013"</span>][<span class=hljs-string>"BH2"</span>][<span class=hljs-number>0</span>], <span class=hljs-string>"-r"</span>, label=<span class=hljs-string>"North"</span>)
+    plt.axvspan(<span class=hljs-number>25</span>, <span class=hljs-number>35</span>, color=<span class=hljs-string>"grey"</span>)
+    plt.legend(bbox_to_anchor=(<span class=hljs-number>1.1</span>,<span class=hljs-number>1.05</span>))
+
+    ax2 = plt.subplot(num, <span class=hljs-number>1</span>, <span class=hljs-number>2</span>)
+    plt.xlim(<span class=hljs-number>0</span>,<span class=hljs-number>110</span>)
+    plt.xticks(np.arange(<span class=hljs-number>0</span>,<span class=hljs-number>111</span>,<span class=hljs-number>10</span>))
+    plt.ylabel(<span class=hljs-string>"Tilt (nrad)"</span>)
+    ax2.annotate(<span class=hljs-string>"NKB Jan 2016"</span> + <span class=hljs-string>", "</span> + str(results_dict[<span class=hljs-string>"NKB-2016-jan"</span>][<span class=hljs-string>"BH1"</span>][<span class=hljs-number>1</span>]) + <span class=hljs-string>" event(s)"</span>, xy=(<span class=hljs-number>0</span>,<span class=hljs-number>1</span>), xycoords=<span class=hljs-string>"axes fraction"</span>)
+    plt.plot(time, results_dict[<span class=hljs-string>"NKB-2016-jan"</span>][<span class=hljs-string>"BH1"</span>][<span class=hljs-number>0</span>], <span class=hljs-string>"--k"</span>, label=<span class=hljs-string>"East"</span>)
+    plt.plot(time, results_dict[<span class=hljs-string>"NKB-2016-jan"</span>][<span class=hljs-string>"BH2"</span>][<span class=hljs-number>0</span>], <span class=hljs-string>"-r"</span>, label=<span class=hljs-string>"North"</span>)
+    plt.axvspan(<span class=hljs-number>25</span>, <span class=hljs-number>35</span>, color=<span class=hljs-string>"grey"</span>)
+
+
+    plt.xlabel(<span class=hljs-string>"Time (min)"</span>)
+    plt.savefig(<span class=hljs-string>"results/figure.png"</span>)
+
+
+<span class=hljs-keyword>if</span> __name__ == <span class=hljs-string>"__main__"</span>:
+    main(sys.argv[<span class=hljs-number>1</span>:])
 </code></pre></article></main><footer><div class=copyright>Copyright © 2020</div><div class=feeds><a href=/feed.rss>RSS Feed</a> | <a href=/feed.atom>Atom Feed</a></div><div class=wyam-attribution>Generated by <a href=https://wyam.io>Wyam</a> with <a href=https://github.com/Ociaw/PlainBlog>Plain Blog</a></div></footer>
